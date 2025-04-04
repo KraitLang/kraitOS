@@ -1,0 +1,143 @@
+namespace kernel
+
+import sys
+import stringlib
+import keyboard
+import atafs
+
+var cwd: [64] = "/"
+var input_buf: [128] = 0
+var input_pos: int = 0
+
+fn on_key() {
+    let ch = keyboard.read_scancode()
+    if ch == '\n' or ch == '\r' {
+        sys.print_char('\n')
+        input_buf[input_pos] = 0
+        parse_command(input_buf)
+        input_pos = 0
+        print_prompt()
+    } else {
+        sys.print_char(ch)
+        input_buf[input_pos] = ch
+        input_pos += 1
+    }
+}
+
+fn print_prompt() {
+    sys.print(cwd)
+    sys.print("> ")
+}
+
+fn parse_command(cmd: *u8) {
+    if stringlib.equals(cmd, "pwd") {
+        sys.println(cwd)
+
+    } elif stringlib.startswith(cmd, "cd ") {
+        let path: [64] = 0
+        stringlib.copy(cmd + 3, path)
+        let newpath: [64] = 0
+        stringlib.resolve_path(cwd, path, newpath)
+        if atafs.dir_exists(newpath) {
+            stringlib.copy(newpath, cwd)
+            sys.print("Moved to: ")
+            sys.println(cwd)
+        } else {
+            sys.println("No such directory.")
+        }
+
+    } elif stringlib.startswith(cmd, "mkdir ") {
+        let path: [64] = 0
+        stringlib.copy(cmd + 6, path)
+        atafs.make_dirs(path)
+        sys.println("Directory created.")
+
+    } elif stringlib.startswith(cmd, "rmdir ") {
+        let path: [64] = 0
+        stringlib.copy(cmd + 6, path)
+        if atafs.remove_dir(path) {
+            sys.println("Directory removed.")
+        } else {
+            sys.println("Directory not empty or doesn't exist.")
+        }
+
+    } elif stringlib.startswith(cmd, "write ") {
+        let parts: [2][64] = 0
+        stringlib.split2(cmd + 6, parts)
+        atafs.write_file(parts[0], parts[1])
+        sys.println("File written.")
+
+    } elif stringlib.startswith(cmd, "append ") {
+        let parts: [2][64] = 0
+        stringlib.split2(cmd + 7, parts)
+        atafs.append_file(parts[0], parts[1])
+        sys.println("Appended to file.")
+
+    } elif stringlib.startswith(cmd, "cat ") {
+        let name: [64] = 0
+        stringlib.copy(cmd + 4, name)
+        let buf: [512] = 0
+        atafs.read_file(name, buf)
+        sys.println(buf)
+
+    } elif stringlib.startswith(cmd, "rm ") {
+        let name: [64] = 0
+        stringlib.copy(cmd + 3, name)
+        atafs.delete_file(name)
+        sys.println("File deleted.")
+
+    } elif stringlib.startswith(cmd, "nano ") {
+        let name: [64] = 0
+        stringlib.copy(cmd + 5, name)
+        sys.println("Nano Editor (type ':wq' to save)")
+        let buf: [512] = 0
+        let pos: int = 0
+        loop {
+            sys.print("> ")
+            let line: [64] = 0
+            keyboard.read_line(line)
+            if stringlib.equals(line, ":wq") {
+                buf[pos] = 0
+                atafs.write_file(name, buf)
+                break
+            }
+            let i = 0
+            while line[i] != 0 {
+                buf[pos] = line[i]
+                i += 1
+                pos += 1
+            }
+            buf[pos] = '\n'
+            pos += 1
+        }
+
+    } elif stringlib.startswith(cmd, "edit ") {
+        let name: [64] = 0
+        stringlib.copy(cmd + 5, name)
+        sys.println("Current content:")
+        let old: [512] = 0
+        atafs.read_file(name, old)
+        sys.println(old)
+        sys.println("Enter new content:")
+        let buf: [512] = 0
+        keyboard.read_line(buf)
+        atafs.write_file(name, buf)
+
+    } elif stringlib.startswith(cmd, "run ") {
+        let name: [64] = 0
+        stringlib.copy(cmd + 4, name)
+        sys.print("Simulating execution of ")
+        sys.println(name)
+
+    } else {
+        sys.println("Unknown command.")
+    }
+}
+
+fn main() {
+    sys.clear()
+    sys.println("Krait CLI Kernel")
+    print_prompt()
+    sys.set_irq_handler(1, on_key)
+    loop {}
+}
