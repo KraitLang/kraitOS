@@ -1,0 +1,114 @@
+namespace atafs
+
+var file_table: [16][64] = 0
+var file_data: [16][512] = 0
+var dir_table: [16][64] = 0
+
+fn dir_exists(name: *u8) -> bool {
+    for i in 0..16 {
+        if stringlib.equals(dir_table[i], name) {
+            return true
+        }
+    }
+    return false
+}
+
+fn make_dir(name: *u8) {
+    for i in 0..16 {
+        if dir_table[i][0] == 0 {
+            stringlib.copy(name, dir_table[i])
+            return
+        }
+    }
+}
+
+fn make_dirs(path: *u8) {
+    let seg: [32] = 0
+    let i = 0
+    let k = 0
+    let current: [64] = "/"
+
+    while true {
+        if path[i] == '/' or path[i] == 0 {
+            seg[k] = 0
+            if seg[0] != 0 {
+                stringlib.append_path(current, seg)
+                if !dir_exists(current) {
+                    make_dir(current)
+                }
+            }
+            if path[i] == 0 { break }
+            k = 0
+        } else {
+            seg[k] = path[i]
+            k += 1
+        }
+        i += 1
+    }
+}
+
+fn remove_dir(name: *u8) -> bool {
+    for i in 0..16 {
+        if stringlib.equals(dir_table[i], name) {
+            dir_table[i][0] = 0
+            return true
+        }
+    }
+    return false
+}
+
+fn write_file(name: *u8, content: *u8) {
+    for i in 0..16 {
+        if stringlib.equals(file_table[i], name) or file_table[i][0] == 0 {
+            stringlib.copy(name, file_table[i])
+            let j = 0
+            while content[j] != 0 and j < 512 {
+                file_data[i][j] = content[j]
+                j += 1
+            }
+            file_data[i][j] = 0
+            return
+        }
+    }
+}
+
+fn append_file(name: *u8, newdata: *u8) {
+    let buf: [512] = 0
+    read_file(name, buf)
+    let len = 0
+    while buf[len] != 0 and len < 512 { len += 1 }
+    let i = 0
+    while newdata[i] != 0 and len < 511 {
+        buf[len] = newdata[i]
+        len += 1
+        i += 1
+    }
+    buf[len] = 0
+    write_file(name, buf)
+}
+
+fn read_file(name: *u8, out: *u8) {
+    for i in 0..16 {
+        if stringlib.equals(file_table[i], name) {
+            let j = 0
+            while file_data[i][j] != 0 and j < 512 {
+                out[j] = file_data[i][j]
+                j += 1
+            }
+            out[j] = 0
+            return
+        }
+    }
+}
+
+fn delete_file(name: *u8) {
+    for i in 0..16 {
+        if stringlib.equals(file_table[i], name) {
+            file_table[i][0] = 0
+            for j in 0..512 {
+                file_data[i][j] = 0
+            }
+            return
+        }
+    }
+}
