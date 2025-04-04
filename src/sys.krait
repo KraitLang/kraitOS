@@ -1,0 +1,59 @@
+namespace sys
+
+fn outb(port: u16, val: u8) {
+    asm("mov dx, {0}", port)
+    asm("mov al, {0}", val)
+    asm("out dx, al")
+}
+
+fn inb(port: u16) -> u8 {
+    asm("mov dx, {0}", port)
+    asm("in al, dx")
+    asm("movzx eax, al")
+    return eax
+}
+
+fn print(s: *u8) {
+    let i = 0
+    while s[i] != 0 {
+        print_char(s[i])
+        i += 1
+    }
+}
+
+fn println(s: *u8) {
+    print(s)
+    print_char('\n')
+}
+
+fn print_char(c: u8) {
+    let vga = 0xb8000 as *u8
+    static var cursor: u16 = 0
+    if c == '\n' {
+        cursor += (80 - cursor % 80)
+    } else {
+        *(vga + cursor * 2) = c
+        *(vga + cursor * 2 + 1) = 0x07
+        cursor += 1
+    }
+}
+
+fn clear() {
+    let vga = 0xb8000 as *u8
+    for i in 0..(80 * 25) {
+        *(vga + i * 2) = ' '
+        *(vga + i * 2 + 1) = 0x07
+    }
+}
+
+fn print_hex(val: u8) {
+    let hex: *u8 = "0123456789ABCDEF"
+    print_char(hex[val >> 4])
+    print_char(hex[val & 0xF])
+}
+
+fn set_irq_handler(irq: u8, handler: fn()) {
+    # 실제 OS에서는 IDT와 PIC를 조작해야 하지만,
+    # 여기선 Krait 가상 실행 환경 기준으로 placeholder
+    # 예시용이므로 실제 구현은 플랫폼에 따라 다름
+}
