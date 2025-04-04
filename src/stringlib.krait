@@ -1,0 +1,171 @@
+namespace stringlib
+
+# 문자열 복사
+fn copy(src: *u8, dst: *u8) {
+    let i = 0
+    while src[i] != 0 {
+        dst[i] = src[i]
+        i += 1
+    }
+    dst[i] = 0
+}
+
+# 문자열 길이
+fn len(s: *u8) -> u16 {
+    let i = 0
+    while s[i] != 0 {
+        i += 1
+    }
+    return i
+}
+
+# 문자열 비교
+fn equals(a: *u8, b: *u8) -> bool {
+    let i = 0
+    while a[i] != 0 or b[i] != 0 {
+        if a[i] != b[i] {
+            return false
+        }
+        i += 1
+    }
+    return true
+}
+
+# 문자열 접두사 비교
+fn startswith(str: *u8, prefix: *u8) -> bool {
+    let i = 0
+    while prefix[i] != 0 {
+        if str[i] != prefix[i] {
+            return false
+        }
+        i += 1
+    }
+    return true
+}
+
+# 문자열 결합 (append)
+fn append(dst: *u8, src: *u8) {
+    let i = len(dst)
+    let j = 0
+    while src[j] != 0 {
+        dst[i + j] = src[j]
+        j += 1
+    }
+    dst[i + j] = 0
+}
+
+# 정수 값을 문자열로 append
+fn append_int(dst: *u8, n: u32) {
+    let buf: [12] = 0
+    let i = 0
+    let x = n
+    if x == 0 {
+        buf[0] = '0'
+        buf[1] = 0
+    } else {
+        let j = 0
+        let tmp = x
+        while tmp > 0 {
+            buf[j] = (tmp % 10) + '0'
+            tmp = tmp / 10
+            j += 1
+        }
+        buf[j] = 0
+        reverse(buf)
+    }
+    append(dst, buf)
+}
+
+# 문자열 뒤집기 (for append_int)
+fn reverse(s: *u8) {
+    let l = len(s)
+    for i in 0..(l / 2) {
+        let t = s[i]
+        s[i] = s[l - i - 1]
+        s[l - i - 1] = t
+    }
+}
+
+# 경로 병합
+fn join_path(base: *u8, name: *u8, out: *u8) {
+    copy(base, out)
+    let l = len(out)
+    if out[l - 1] != '/' {
+        out[l] = '/'
+        out[l + 1] = 0
+    }
+    append(out, name)
+}
+
+# 경로 정리 (.., . 등 처리 가능하도록 확장 가능)
+fn resolve_path(cwd: *u8, input: *u8, out: *u8) {
+    if input[0] == '/' {
+        copy(input, out)
+    } elif equals(input, "..") {
+        let i = 0
+        while cwd[i] != 0 { i += 1 }
+        while i > 0 and cwd[i] != '/' { i -= 1 }
+        if i == 0 { i = 1 }
+        cwd[i] = 0
+        copy(cwd, out)
+    } else {
+        copy(cwd, out)
+        let l = len(out)
+        if out[l - 1] != '/' {
+            out[l] = '/'
+            out[l + 1] = 0
+        }
+        append(out, input)
+    }
+}
+
+# 공백 전까지 복사
+fn copy_until_space(src: *u8, dst: *u8) {
+    let i = 0
+    while src[i] != 0 and src[i] != ' ' {
+        dst[i] = src[i]
+        i += 1
+    }
+    dst[i] = 0
+}
+
+# 2단어 분리 (ex: cp file1 file2)
+fn split2(input: *u8, out: *[2][64]) {
+    let i = 0
+    let j = 0
+    while input[i] != 0 and input[i] != ' ' {
+        out[0][i] = input[i]
+        i += 1
+    }
+    out[0][i] = 0
+    if input[i] == ' ' { i += 1 }
+    while input[i + j] != 0 {
+        out[1][j] = input[i + j]
+        j += 1
+    }
+    out[1][j] = 0
+}
+
+# split3: GET [url] > file
+fn split3(input: *u8, url: *u8, file: *u8) -> bool {
+    let i = 0
+    while input[i] != 0 and input[i] != '>' {
+        url[i] = input[i]
+        i += 1
+    }
+    url[i] = 0
+
+    while input[i] == ' ' or input[i] == '>' { i += 1 }
+
+    if input[i] == 0 {
+        return false
+    }
+
+    let j = 0
+    while input[i + j] != 0 {
+        file[j] = input[i + j]
+        j += 1
+    }
+    file[j] = 0
+    return true
+}
