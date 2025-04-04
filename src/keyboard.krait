@@ -1,0 +1,21 @@
+namespace keyboard
+
+fn read_scancode() -> u8 {
+    while (inb(0x64) & 1) == 0 {}
+    return inb(0x60)
+}
+
+fn read_line(buf: *u8) {
+    let i = 0
+    loop {
+        let ch = read_scancode()
+        if ch == '\n' or ch == '\r' {
+            buf[i] = 0
+            sys.print_char('\n')
+            break
+        }
+        buf[i] = ch
+        sys.print_char(ch)
+        i += 1
+    }
+}
